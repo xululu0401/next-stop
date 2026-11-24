@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>下一站就贵了</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: #eef1f3; color: #1f262b; line-height: 1.6; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 20px 14px 40px; }
+  h1 { font-size: 26px; letter-spacing: 1px; }
+  .lead { color: #56626b; font-size: 14px; margin: 4px 0 14px; }
+  .card { background: #fff; border-radius: 10px; padding: 14px; border: 1px solid #d9e0e5; margin-bottom: 14px; min-width: 0; }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 8px; overflow-wrap: anywhere; }
+  .top { display: grid; grid-template-columns: minmax(0, 330px) minmax(0, 1fr); gap: 14px; align-items: start; }
+  label { font-size: 12px; color: #66727b; display: block; overflow-wrap: anywhere; }
+  input, textarea { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid #b9c3ca; border-radius: 6px; width: 100%; min-width: 0; background: #fff; font-variant-numeric: tabular-nums; }
+  textarea { resize: vertical; min-height: 90px; line-height: 1.55; font-family: ui-monospace, Menlo, "PingFang SC", monospace; }
+  .g2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+  .row { margin-top: 10px; }
+  .bad { border-color: #b3412f !important; background: #fff0ec !important; }
+  button { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 6px; border: 1px solid #1f5f7a; background: #1f5f7a; color: #fff; cursor: pointer; }
+  button.ghost { background: #fff; color: #1f5f7a; }
+  .presets, .dl { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .err { display: none; background: #fff0ec; border: 1px solid #ecb7aa; color: #8e2b1c; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; overflow-wrap: anywhere; }
+  .muted { color: #77838b; font-size: 12px; }
+  #summary { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+  #facts { margin: 8px 0 0 18px; font-size: 14px; } #facts li { margin: 3px 0; overflow-wrap: anywhere; }
+  /* 线路图 */
+  .mapwrap { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .line { position: relative; padding-left: 4px; }
+  .st { display: grid; grid-template-columns: 56px 22px minmax(0, 1fr) auto; align-items: center; gap: 6px; min-height: 30px; font-variant-numeric: tabular-nums; }
+  .st .km { font-size: 12px; color: #77838b; text-align: right; }
+  .st .dot { width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #9aa6ae; justify-self: center; position: relative; z-index: 1; }
+  .st .seg { position: absolute; }
+  .st .nm { overflow-wrap: anywhere; font-size: 14px; }
+  .st .nm small { color: #66727b; font-size: 12px; margin-left: 6px; }
+  .st .fr { font-size: 13px; font-weight: 600; text-align: right; white-space: nowrap; }
+  .st.on .nm, .st.off .nm { font-weight: 700; }
+  .st.on .dot { box-shadow: 0 0 0 3px #1f5f7a; } .st.off .dot { box-shadow: 0 0 0 3px #c0392b; }
+  .rail { position: absolute; left: 82px; width: 6px; top: 15px; bottom: 15px; border-radius: 3px; background: #d4dbe0; }
+  .jump { margin: 2px 0 2px 84px; font-size: 12px; color: #a3321f; font-weight: 600; border-top: 1px dashed #e2a89c; padding-top: 1px; overflow-wrap: anywhere; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: #56626b; margin-top: 8px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+  /* 小票 */
+  .tickets { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+  .tk { border: 1px dashed #b9c3ca; border-radius: 8px; padding: 10px 12px; background: #fbfcfc; min-width: 0; font-variant-numeric: tabular-nums; }
+  .tk.rec { border: 2px solid #1f5f7a; background: #f1f7fa; }
+  .tk h3 { font-size: 14px; overflow-wrap: anywhere; }
+  .tk .big { font-size: 22px; font-weight: 700; }
+  .tk .ln { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: #48545c; }
+  .tk .ln span:last-child { white-space: nowrap; }
+  .tk .badge { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 8px; background: #dcebf2; color: #1f5f7a; margin-right: 4px; }
+  .tk .badge.c { background: #e4f1e4; color: #2f6a3a; } .tk .badge.f { background: #f6e6d5; color: #8a4b12; }
+  /* 时间价分段 */
+  .bandbar { display: flex; height: 30px; border-radius: 6px; overflow: hidden; margin-top: 6px; }
+  .bandbar div { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; overflow: hidden; white-space: nowrap; min-width: 0; padding: 0 4px; }
+  .bandaxis { position: relative; height: 34px; font-size: 11px; color: #66727b; font-variant-numeric: tabular-nums; }
+  .bandaxis span { position: absolute; transform: translateX(-50%); top: 2px; white-space: nowrap; }
+  .bandaxis .now { color: #1f262b; font-weight: 700; top: 16px; }
+  #bandList { margin: 6px 0 0 18px; font-size: 13px; } #bandList li { overflow-wrap: anywhere; }
+  #sugs { display: grid; gap: 8px; }
+  .sug { display: flex; gap: 10px; align-items: center; justify-content: space-between; border: 1px solid #d9e0e5; border-radius: 6px; padding: 8px 10px; }
+  .sug span { min-width: 0; overflow-wrap: anywhere; font-size: 14px; } .sug button { flex: none; }
+  .how { font-size: 13px; } .how p { margin: 6px 0; }
+  @media (max-width: 760px) { .top { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 480px) { .sug { flex-direction: column; align-items: stretch; } #summary { font-size: 16px; } .st { grid-template-columns: 44px 22px minmax(0, 1fr) auto; } .rail { left: 70px; } .jump { margin-left: 72px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>下一站就贵了</h1>
+  <p class="lead">地铁按里程分档收钱，多坐一站可能就跳一块。家门口能走到两三个站、公司那头也有两个站可下的时候，早一站下车多走几步、或者多走一站去上车，每程能省一档票价，但要多花几分钟。把你那条线的站、两头的步行时间和当地的票价表抄进来，这里比完所有上下车组合，按你的时间值多少钱挑一条，并标出票价在哪一站跳档。默认例子（站名、里程、票价表）是虚构的。</p>
+
+  <div class="top">
+    <div class="card">
+      <h2>线路和票价</h2>
+      <label for="stations">每行一个站：站名 公里 [分钟]（公里、分钟都从这条线第一站算起）</label>
+      <textarea id="stations" maxlength="900" spellcheck="false" style="min-height:200px"></textarea>
+      <div class="g2 row">
+        <div><label for="origins">上车这头：站名 步行分钟</label><textarea id="origins" maxlength="200" spellcheck="false"></textarea></div>
+        <div><label for="dests">下车这头：站名 步行分钟</label><textarea id="dests" maxlength="200" spellcheck="false"></textarea></div>
+      </div>
+      <div class="row">
+        <label for="fares">票价表：公里上限 票价（含上限，照当地公布的抄）</label>
+        <textarea id="fares" maxlength="300" spellcheck="false"></textarea>
+      </div>
+      <div class="g2 row">
+        <div><label for="extraKm">超出最后一档后每几公里</label><input id="extraKm" inputmode="decimal" maxlength="6"></div>
+        <div><label for="extraYuan">加几元（不加写 0）</label><input id="extraYuan" inputmode="decimal" maxlength="5"></div>
+        <div><label for="trips">每月坐几程（单程算一次）</label><input id="trips" inputmode="numeric" maxlength="3"></div>
+        <div><label for="tv">你的时间每小时值几元</label><input id="tv" inputmode="numeric" maxlength="4"></div>
+        <div><label for="rate">站表没写分钟时：每公里几分钟</label><input id="rate" inputmode="decimal" maxlength="4"></div>
+      </div>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div>
+      <div class="err" id="error"></div>
+      <div id="out">
+        <div class="card">
+          <div id="summary"></div>
+          <ul id="facts"></ul>
+        </div>
+        <div class="card">
+          <h2 id="mapTitle">线路图</h2>
+          <div class="mapwrap"><div class="line" id="map"></div></div>
+          <div class="legend" id="legend"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="out2">
+    <div class="card">
+      <h2>每种走法一张小票（推荐的加粗框）</h2>
+      <div class="tickets" id="tickets"></div>
+    </div>
+    <div class="card">
+      <h2>你的时间值多少钱，就该选哪条</h2>
+      <div id="bandbar" class="bandbar"></div>
+      <div id="bandaxis" class="bandaxis"></div>
+      <ul id="bandList"></ul>
+    </div>
+    <div class="card" id="sugCard">
+      <h2>改一个条件（点一下代回重算）</h2>
+      <div id="sugs"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>带走结果</h2>
+    <div class="dl">
+      <button id="dlCSV">CSV 明细</button><button id="dlMD">Markdown 摘要</button><button id="dlPNG">结果卡 PNG</button><button id="dlJSON" class="ghost">JSON 备份</button>
+      <button id="reset" class="ghost">恢复默认</button>
+    </div>
+    <p class="muted" style="margin-top:6px">输入自动保存在这台设备的浏览器里，刷新还在。</p>
+  </div>
+
+  <div class="card how">
+    <h2>怎么算的</h2>
+    <p><b>里程</b>：同一条线上两站的公里数相减。<b>票价</b>：在票价表里找第一行「公里上限 ≥ 里程」的票价；超出最后一档后，每多出「几公里」（不足也算）加「几元」。</p>
+    <p><b>时间</b>：走去上车 + 坐车 + 走到目的地。站表写了分钟就用分钟差，没写就按「每公里几分钟」估，取到 0.1 分钟。</p>
+    <p><b>挑哪条</b>：每条折成钱，票价 + 时间价 × 分钟 ÷ 60，取最小的；一样时取快的。时间价写 0 就只看票价。</p>
+    <p><b>在哪个时间价会换</b>：一条比另一条贵 Δ 元、快 Δt 分钟，时间价到 Δ ÷ Δt × 60 元/小时时两条一样，再往上就该选快的那条。</p>
+    <p class="muted">只算一条线上的上下车站，不处理换乘和最短路径里程、按月累计打折、换乘优惠、高峰票价，也不比公交和骑车的钱。各城市真实票价以当地公布为准，这里不内置任何城市的票价。默认例子是虚构的。</p>
+  </div>
+</div>
+
+  <script>
+/* 下一站就贵了 · 计算核心
+ * 地铁按里程分档计价：多坐一站可能就跳一档，早一站下车（或多走一站去上车）可能每程省一块钱，但要多走几分钟。
+ * 输入：一条线上的站（站名 公里 [分钟]）、家这头能走去的站（站名 步行分钟）、目的地那头能走到的站、
+ *       票价表（公里上限 票价，含上限）+ 超出后每 N 公里加 M 元、每月坐几程、你的时间每小时值几元。
+ * 1. 每一种「上车站 × 下车站」组合：里程 = |公里差|，票价查表；时间 = 走过去 + 坐车 + 走过去。
+ *    坐车分钟：站表写了分钟用分钟差，没写就按「每公里几分钟」估（取到 0.1 分钟）。
+ * 2. 最快 = 时间最少（一样快取便宜的）；最省 = 票价最低（一样便宜取快的）。
+ * 3. 按时间价折算：总成本 = 票价 + 时间价 × 分钟 ÷ 60。取最小的为推荐；一样时取快的。
+ * 4. 时间价在哪个数上推荐会换：比推荐慢但便宜的组合，时间价低于 6×省的分 ÷ 多的 0.1 分钟（元/小时）时胜出；
+ *    比推荐快但贵的组合，时间价不低于对应值时胜出。
+ * 5. 「下一站就贵了」：从推荐的上车站坐，每站的票价；票价在哪两站之间跳档。
+ * 不做：任何城市的真实票价规则（票价表由你填）、换乘与最短路径里程、按月累计优惠、换乘优惠、高峰票价、公交与骑车接驳的费用。默认例子是虚构的。 */
+(function (root) {
+  'use strict';
+  function Bad(message, field) { const e = new Error(message); e.field = field; return e; }
+  const KEYS = ['stations', 'origins', 'dests', 'fares', 'extraKm', 'extraYuan', 'rate', 'trips', 'tv'];
+  const MAX_ST = 40, MAX_OPT = 6, MAX_TIER = 12;
+  const NUM2 = /^\d{1,3}(\.\d{1,2})?$/, NUM1 = /^\d{1,3}(\.\d)?$/, INT = /^\d{1,4}$/;
+  const f2 = (c) => { const v = Math.round(c) / 100; return Number.isInteger(v) ? String(v) : String(+v.toFixed(2)); };
+  const f1 = (c) => { const v = Math.round(c) / 10; return Number.isInteger(v) ? String(v) : v.toFixed(1); };
+  const yuan = (fen) => f2(fen) + ' 元';
+  const mins = (t10) => f1(t10) + ' 分钟';
+  function hm(t10) { const m = Math.round(t10 / 10); if (m < 60) return m + ' 分钟'; const h = Math.floor(m / 60), r = m % 60; return h + ' 小时' + (r ? ' ' + r + ' 分' : ''); }
+  const tidy = (s) => String(s).replace(/[，,；;、\t　]/g, ' ').replace(/\s+/g, ' ').trim();
+  const HEAD = /^(站名|站|车站|公里上限|公里|里程)$/;
+
+  function num(t, re, lo, hi, scale, what, field, hint) {
+    if (!re.test(t)) throw Bad(what + '「' + String(t).slice(0, 10) + '」要写数字' + (hint || ''), field);
+    const v = +t;
+    if (v < lo || v > hi) throw Bad(what + ' ' + t + ' 要在 ' + lo + ' 到 ' + hi + ' 之间', field);
+    return Math.round(v * scale);
+  }
+  function lines(txt) {
+    const L = String(txt == null ? '' : txt).split('\n').map(tidy).filter(Boolean);
+    if (L.length && HEAD.test(L[0].split(' ')[0])) L.shift();
+    return L;
+  }
+
+  function parse(inp) {
+    const s = (k) => String(inp[k] == null ? '' : inp[k]).trim();
+    /* 站 */
+    const SL = lines(s('stations'));
+    if (SL.length < 2) throw Bad('站至少写两个：每行「站名 公里 [分钟]」，公里是从这条线第一站算起', 'stations');
+    if (SL.length > MAX_ST) throw Bad('站最多 ' + MAX_ST + ' 个（现在 ' + SL.length + ' 个）', 'stations');
+    const st = [], idx = {};
+    let hasMin = null;
+    SL.forEach((ln, i) => {
+      const t = ln.split(' ');
+      if (t.length !== 2 && t.length !== 3) throw Bad('站第 ' + (i + 1) + ' 行写「站名 公里 [分钟]」（现在「' + ln.slice(0, 16) + '」）', 'stations');
+      const name = t[0];
+      if (name.length > 12) throw Bad('站名「' + name.slice(0, 12) + '…」太长，最多 12 个字', 'stations');
+      if (/^\d/.test(name)) throw Bad('站第 ' + (i + 1) + ' 行要先写站名再写公里', 'stations');
+      if (idx[name] != null) throw Bad('站「' + name + '」写了两行', 'stations');
+      const km = num(t[1], NUM2, 0, 300, 100, '「' + name + '」的公里', 'stations', '（最多两位小数）');
+      const m = t.length === 3 ? num(t[2], NUM1, 0, 600, 10, '「' + name + '」的分钟', 'stations', '（最多一位小数）') : null;
+      if (hasMin === null) hasMin = m != null;
+      else if (hasMin !== (m != null)) throw Bad('站的分钟要么每行都写，要么都不写（第 ' + (i + 1) + ' 行不一样）', 'stations');
+      if (st.length && km <= st[st.length - 1].km) throw Bad('站的公里要从上往下越来越大（「' + name + '」' + t[1] + ' 不大于上一站）', 'stations');
+      if (m != null && st.length && m < st[st.length - 1].min) throw Bad('站的分钟不能往回走（「' + name + '」' + t[2] + ' 比上一站小）', 'stations');
+      idx[name] = st.length; st.push({ name, km, min: m });
+    });
+    const rate = hasMin ? null : num(s('rate'), NUM1, 0.5, 10, 10, '每公里几分钟', 'rate', '（最多一位小数）');
+    /* 两头能走到的站 */
+    function opts(k, what) {
+      const L = lines(s(k));
+      if (!L.length) throw Bad(what + '一个站都没写：每行「站名 步行分钟」', k);
+      if (L.length > MAX_OPT) throw Bad(what + '最多 ' + MAX_OPT + ' 个站（现在 ' + L.length + ' 个）', k);
+      const seen = {};
+      return L.map((ln, i) => {
+        const t = ln.split(' ');
+        if (t.length !== 2) throw Bad(what + '第 ' + (i + 1) + ' 行写「站名 步行分钟」（现在「' + ln.slice(0, 16) + '」）', k);
+        if (idx[t[0]] == null) throw Bad(what + '的「' + t[0].slice(0, 12) + '」不在站表里', k);
+        if (seen[t[0]]) throw Bad(what + '的「' + t[0] + '」写了两行', k);
+        seen[t[0]] = 1;
+        return { si: idx[t[0]], walk: num(t[1], INT, 0, 90, 10, what + '「' + t[0] + '」的步行分钟', k, '（整数分钟）') };
+      });
+    }
+    const origins = opts('origins', '上车这头');
+    const dests = opts('dests', '下车这头');
+    /* 票价表 */
+    const FL = lines(s('fares'));
+    if (!FL.length) throw Bad('票价表一行都没写：每行「公里上限 票价」，比如「6 3」', 'fares');
+    if (FL.length > MAX_TIER) throw Bad('票价表最多 ' + MAX_TIER + ' 行', 'fares');
+    const tiers = [];
+    FL.forEach((ln, i) => {
+      const t = ln.split(' ');
+      if (t.length !== 2) throw Bad('票价表第 ' + (i + 1) + ' 行写「公里上限 票价」（现在「' + ln.slice(0, 16) + '」）', 'fares');
+      const lim = num(t[0], NUM2, 0.01, 300, 100, '票价表第 ' + (i + 1) + ' 行的公里上限', 'fares');
+      const p = num(t[1], NUM2, 0, 100, 100, '票价表第 ' + (i + 1) + ' 行的票价', 'fares');
+      if (tiers.length && lim <= tiers[tiers.length - 1].lim) throw Bad('票价表的公里上限要越来越大（第 ' + (i + 1) + ' 行）', 'fares');
+      if (tiers.length && p < tiers[tiers.length - 1].p) throw Bad('票价表的票价不能越远越便宜（第 ' + (i + 1) + ' 行）', 'fares');
+      tiers.push({ lim, p });
+    });
+    const exKm = s('extraKm') === '' ? 0 : num(s('extraKm'), NUM2, 0, 100, 100, '超出后每几公里', 'extraKm');
+    const exYuan = s('extraYuan') === '' ? 0 : num(s('extraYuan'), NUM2, 0, 50, 100, '超出后加几元', 'extraYuan');
+    if ((exKm === 0) !== (exYuan === 0)) throw Bad('超出票价表后「每几公里加几元」两个要么都写，要么都写 0', exKm === 0 ? 'extraKm' : 'extraYuan');
+    const trips = num(s('trips'), INT, 1, 200, 1, '每月坐几程', 'trips', '（整数）');
+    const tv = num(s('tv'), INT, 0, 1000, 1, '时间每小时值几元', 'tv', '（整数，不想算写 0）');
+    return { st, hasMin, rate, origins, dests, tiers, exKm, exYuan, trips, tv };
+  }
+
+  /* 票价（分）：dist 单位 0.01 公里；含上限。超出表且没写加价规则 → null */
+  function fare(P, dist) {
+    for (const t of P.tiers) if (dist <= t.lim) return t.p;
+    if (!P.exKm) return null;
+    const last = P.tiers[P.tiers.length - 1];
+    return last.p + Math.ceil((dist - last.lim) / P.exKm) * P.exYuan;
+  }
+  function ride(P, a, b) {
+    const A = P.st[a], B = P.st[b];
+    if (P.hasMin) return Math.abs(B.min - A.min);
+    return Math.round(Math.abs(B.km - A.km) * P.rate / 100);
+  }
+  /* 成本 ×6：票价(分)×6 + 时间价(元/时)×时间(0.1 分钟)，都是整数 */
+  const cost6 = (P, o) => o.fare * 6 + P.tv * o.time;
+  const faster = (a, b) => a.time - b.time || a.fare - b.fare || a.k - b.k;
+  const cheaper = (a, b) => a.fare - b.fare || a.time - b.time || a.k - b.k;
+
+  function combos(P) {
+    const out = []; let k = 0, over = null, nOver = 0;
+    P.origins.forEach((o, oi) => P.dests.forEach((d, di) => {
+      if (o.si === d.si) return;
+      const dist = Math.abs(P.st[d.si].km - P.st[o.si].km);
+      const f = fare(P, dist);
+      if (f == null) { nOver++; if (!over || dist > over.dist) over = { dist, o, d }; return; }
+      const r = ride(P, o.si, d.si);
+      out.push({ k: k++, oi, di, o: o.si, d: d.si, dist, fare: f, walkO: o.walk, ride: r, walkD: d.walk, time: o.walk + r + d.walk });
+    }));
+    return { list: out, over, nOver };
+  }
+  /* tv 可以是任意非负数（画分段用）；页面上用的是 P.tv（整数） */
+  function pickAt(list, tv) {
+    let best = null, bc = 0;
+    for (const c of list) { const a = c.fare * 6 + tv * c.time; if (!best || a < bc || (a === bc && faster(c, best) < 0)) { best = c; bc = a; } }
+    return best;
+  }
+  const pick = (P, list) => pickAt(list, P.tv);
+  /* 时间价从 0 往上，每一段选哪条：分界点是两两组合成本相等的时间价 */
+  function bands(list, tvNow) {
+    const bp = new Set();
+    for (const a of list) for (const b of list) if (a.fare > b.fare && a.time < b.time) bp.add(6 * (a.fare - b.fare) / (b.time - a.time));
+    const pts = [...bp].sort((x, y) => x - y);
+    const hi = Math.max(60, Math.ceil((pts.length ? pts[pts.length - 1] : 0) * 1.5), tvNow + 10);
+    const edges = [0].concat(pts.filter((x) => x > 0 && x < hi), [hi]);
+    const out = [];
+    for (let i = 0; i + 1 < edges.length; i++) {
+      const c = pickAt(list, (edges[i] + edges[i + 1]) / 2);
+      if (out.length && out[out.length - 1].c === c) out[out.length - 1].to = edges[i + 1];
+      else out.push({ from: edges[i], to: edges[i + 1], c });
+    }
+    return { hi, list: out };
+  }
+  /* 帕累托：更快的里没有更便宜或一样便宜的 */
+  function frontier(list) {
+    const s = list.slice().sort(faster), out = []; let minF = Infinity;
+    for (const c of s) if (c.fare < minF) { out.push(c); minF = c.fare; }
+    return out;
+  }
+  /* 推荐在时间价多少时会换（元/小时）：往下 = 低于它时有更慢更便宜的胜出；往上 = 不低于它时有更快更贵的胜出 */
+  function switches(list, rec) {
+    let down = null, up = null;
+    for (const c of list) {
+      /* 同一个分界点有几条时：往下取最慢的（低于分界点时它省得最多），往上取最快的 */
+      if (c.fare < rec.fare && c.time > rec.time) { const t = 6 * (rec.fare - c.fare) / (c.time - rec.time); if (!down || t > down.t || (t === down.t && faster(c, down.c) > 0)) down = { t, c }; }
+      if (c.fare > rec.fare && c.time < rec.time) { const t = 6 * (c.fare - rec.fare) / (rec.time - c.time); if (!up || t < up.t || (t === up.t && faster(c, up.c) < 0)) up = { t, c }; }
+    }
+    return { down, up };
+  }
+  /* 从某个上车站坐，每站多少钱；跳档位置 */
+  function ladder(P, from) {
+    return P.st.map((s, i) => { const dist = Math.abs(s.km - P.st[from].km); return { i, name: s.name, dist, fare: i === from ? null : fare(P, dist) }; });
+  }
+
+  const nm = (P, c) => P.st[c.o].name + ' 上 → ' + P.st[c.d].name + ' 下';
+  const rateTxt = (t) => { const v = Math.round(t * 100) / 100; return (Number.isInteger(v) ? String(v) : v.toFixed(2)) + ' 元/小时'; };
+
+  function calculate(inp) {
+    const P = parse(inp);
+    const { list, over, nOver } = combos(P);
+    if (!list.length) {
+      if (over) throw Bad('「' + P.st[over.o.si].name + '」到「' + P.st[over.d.si].name + '」' + f2(over.dist) + ' 公里，超出票价表最后一档 ' + f2(P.tiers[P.tiers.length - 1].lim) + ' 公里：补一行票价表，或写上「超出后每几公里加几元」', 'fares');
+      throw Bad('上车这头和下车这头写的是同一个站，不用坐车', 'dests');
+    }
+    const rec = pick(P, list), fast = list.slice().sort(faster)[0], cheap = list.slice().sort(cheaper)[0];
+    const front = frontier(list), sw = switches(list, rec), bd = bands(list, P.tv);
+    const lad = ladder(P, rec.o);
+    /* 推荐终点附近的跳档：沿坐车方向，推荐下车站与下一站之间是否跳档；以及推荐下车站之前最后一次跳档 */
+    const dir = rec.d > rec.o ? 1 : -1;
+    const nextI = rec.d + dir, nextStop = (nextI >= 0 && nextI < P.st.length) ? lad[nextI] : null;
+    /* 沿坐车方向，票价从哪站跳到哪站（第一站从上车后的第一站算起） */
+    const jumps = [];
+    for (let i = rec.o + 2 * dir; i >= 0 && i < P.st.length; i += dir) {
+      const prev = lad[i - dir], cur = lad[i];
+      if (cur.fare == null || prev.fare == null) continue;
+      if (cur.fare > prev.fare) jumps.push({ before: prev.i, after: cur.i, from: prev.fare, to: cur.fare });
+    }
+    const R = { P, list, rec, fast, cheap, front, sw, lad, dir, nextStop, jumps, over, nOver, bands: bd };
+    R.monthSave = (fast.fare - cheap.fare) * P.trips;
+    R.monthExtra = (cheap.time - fast.time) * P.trips;
+    R.summary = summary(R); R.facts = facts(R);
+    return R;
+  }
+
+  function summary(R) {
+    const P = R.P, rec = R.rec, f = R.fast, c = R.cheap;
+    const head = nm(P, rec) + '：每程 ' + yuan(rec.fare) + '、' + mins(rec.time);
+    const by = P.tv ? '按你的时间 ' + P.tv + ' 元/小时，' : '时间不算钱的话，';
+    if (R.list.length === 1) return '只有一种走法，' + head;
+    if (rec === f && rec === c) return head + '，又快又省，不用换站';
+    if (rec === f) return by + '还是' + head + '；换站每程能省 ' + yuan(f.fare - c.fare) + '，但要多花 ' + mins(c.time - f.time) + '，不划算';
+    return by + '选' + head + '，比最快那条每程省 ' + yuan(f.fare - rec.fare) + '、多 ' + mins(rec.time - f.time) + '；一个月 ' + P.trips + ' 程省 ' + yuan((f.fare - rec.fare) * P.trips);
+  }
+  function facts(R) {
+    const P = R.P, f = R.fast, c = R.cheap, out = [];
+    const parts = (x) => '（走 ' + mins(x.walkO) + ' + 坐 ' + mins(x.ride) + ' + 走 ' + mins(x.walkD) + '，' + f2(x.dist) + ' 公里）';
+    out.push('最快：' + nm(P, f) + '，每程 ' + yuan(f.fare) + '、' + mins(f.time) + parts(f));
+    if (c !== f) {
+      out.push('最省：' + nm(P, c) + '，每程 ' + yuan(c.fare) + '、' + mins(c.time) + parts(c));
+      out.push('最省比最快每程省 ' + yuan(f.fare - c.fare) + '、多 ' + mins(c.time - f.time) + '；一个月 ' + P.trips + ' 程省 ' + yuan(R.monthSave) + '、多花 ' + hm(R.monthExtra) + '，相当于每多花一小时省 ' + rateTxt(6 * (f.fare - c.fare) / (c.time - f.time)).replace(' 元/小时', ' 元'));
+    } else if (R.list.length > 1) out.push('最快的那条也是最便宜的');
+    if (R.sw.down) out.push('时间价低于 ' + rateTxt(R.sw.down.t) + ' 时，换成 ' + nm(P, R.sw.down.c) + '（每程 ' + yuan(R.sw.down.c.fare) + '、' + mins(R.sw.down.c.time) + '）');
+    if (R.sw.up) out.push('时间价到 ' + rateTxt(R.sw.up.t) + ' 及以上时，换成 ' + nm(P, R.sw.up.c) + '（每程 ' + yuan(R.sw.up.c.fare) + '、' + mins(R.sw.up.c.time) + '）');
+    const ns = R.nextStop, rec = R.rec;
+    if (ns && ns.fare != null && ns.fare > rec.fare) out.push('下一站就贵了：从 ' + P.st[rec.o].name + ' 坐到 ' + P.st[rec.d].name + ' 是 ' + f2(rec.dist) + ' 公里 ' + yuan(rec.fare) + '，再坐一站到 ' + ns.name + '（' + f2(ns.dist) + ' 公里）就是 ' + yuan(ns.fare));
+    else if (ns && ns.fare != null) out.push('从 ' + P.st[rec.o].name + ' 坐，多坐一站到 ' + ns.name + '（' + f2(ns.dist) + ' 公里）还是 ' + yuan(ns.fare));
+    out.push('比了 ' + R.list.length + ' 种上下车组合（上车这头 ' + P.origins.length + ' 个站 × 下车这头 ' + P.dests.length + ' 个站' + (R.list.length < P.origins.length * P.dests.length ? '，去掉同站或超出票价表的' : '') + '）');
+    if (R.nOver) out.push(R.nOver + ' 种组合超出票价表最后一档 ' + f2(P.tiers[P.tiers.length - 1].lim) + ' 公里、又没写超出规则，没有算进来（最远的是 ' + P.st[R.over.o.si].name + ' → ' + P.st[R.over.d.si].name + ' ' + f2(R.over.dist) + ' 公里）');
+    return out;
+  }
+
+  /* 建议：每条都是一个能代回的输入补丁，文字用代回后重算的结果 */
+  function suggestions(inp, R) {
+    const P = R.P, out = [];
+    const push = (id, patch, txt) => {
+      const nx = Object.assign({}, inp, patch); let r2;
+      try { r2 = calculate(nx); } catch (e) { return; }
+      if (r2.rec.k === R.rec.k && r2.rec.o === R.rec.o && r2.rec.d === R.rec.d) return;
+      out.push({ id, apply: nx, text: txt(r2), after: { o: r2.rec.o, d: r2.rec.d, fare: r2.rec.fare, time: r2.rec.time } });
+    };
+    if (R.sw.down) {
+      const t = Math.ceil(R.sw.down.t) - 1;
+      if (t >= 0) push('tvDown', { tv: String(t) }, (r2) => '时间价改成 ' + t + ' 元/小时：换成 ' + nm(r2.P, r2.rec) + '，每程 ' + yuan(r2.rec.fare) + '、' + mins(r2.rec.time));
+    }
+    if (R.sw.up) {
+      const t = Math.ceil(R.sw.up.t);
+      if (t <= 1000) push('tvUp', { tv: String(t) }, (r2) => '时间价改成 ' + t + ' 元/小时：换成 ' + nm(r2.P, r2.rec) + '，每程 ' + yuan(r2.rec.fare) + '、' + mins(r2.rec.time));
+    }
+    /* 最省的那条要是没被选上：它独有的那头步行最多几分钟才值 */
+    const c = R.cheap;
+    if (c !== R.rec && P.tv > 0) {
+      const side = c.d !== R.rec.d ? 'dests' : (c.o !== R.rec.o ? 'origins' : null);
+      if (side) {
+        const list = side === 'dests' ? P.dests : P.origins, j = side === 'dests' ? c.di : c.oi, w0 = list[j].walk / 10;
+        for (let w = w0 - 1; w >= 0; w--) {
+          const txt = lines(String(inp[side])).map((ln, i) => (i === j ? ln.split(' ')[0] + ' ' + w : ln));
+          const nx = Object.assign({}, inp, { [side]: txt.join('\n') });
+          let r2; try { r2 = calculate(nx); } catch (e) { break; }
+          if (r2.rec.o === c.o && r2.rec.d === c.d) {
+            push('walk', { [side]: txt.join('\n') }, (q) => '走到「' + P.st[side === 'dests' ? c.d : c.o].name + '」要是能缩到 ' + w + ' 分钟（现在 ' + w0 + ' 分钟，比如找条近路、骑车）：就选 ' + nm(q.P, q.rec) + '，每程 ' + yuan(q.rec.fare) + '、' + mins(q.rec.time));
+            break;
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  /* ── 导出 ── */
+  function csvCell(v) { const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  function toCSV(R, stamp) {
+    const P = R.P, L = [['下一站就贵了', '生成于 ' + stamp], ['结论', R.summary], ['时间价（元/小时）', P.tv], ['每月几程', P.trips], []];
+    L.push(['上车站', '下车站', '里程（公里）', '票价（元）', '走去上车（分钟）', '坐车（分钟）', '走到目的地（分钟）', '合计（分钟）', '按时间价折算（元）', '标记']);
+    R.list.slice().sort(faster).forEach((c) => L.push([P.st[c.o].name, P.st[c.d].name, f2(c.dist), f2(c.fare), f1(c.walkO), f1(c.ride), f1(c.walkD), f1(c.time), f2(cost6(P, c) / 6),
+      [c === R.rec ? '推荐' : '', c === R.fast ? '最快' : '', c === R.cheap ? '最省' : ''].filter(Boolean).join('/')]));
+    L.push([], ['从 ' + P.st[R.rec.o].name + ' 坐到', '里程（公里）', '票价（元）']);
+    R.lad.forEach((x) => { if (x.fare != null || x.i !== R.rec.o) L.push([x.name, f2(x.dist), x.fare == null ? '超出票价表' : f2(x.fare)]); });
+    L.push([], ['序号', '说明']); R.facts.forEach((x, i) => L.push([i + 1, x]));
+    return L.map((r) => r.map(csvCell).join(',')).join('\n') + '\n';
+  }
+  function toMD(R, stamp, sg) {
+    const P = R.P, o = [];
+    o.push('# 下一站就贵了', '', '生成时间：' + stamp + '　默认例子是虚构的，票价表是你填的', '', '**' + R.summary + '**', '');
+    R.facts.forEach((x) => o.push('- ' + x));
+    o.push('', '## 每种上下车组合（按时间从快到慢）', '', '| 上车 | 下车 | 公里 | 票价 | 合计分钟 | 折算元 | 标记 |', '|---|---|---:|---:|---:|---:|---|');
+    R.list.slice().sort(faster).forEach((c) => o.push('| ' + [P.st[c.o].name, P.st[c.d].name, f2(c.dist), f2(c.fare), f1(c.time), f2(cost6(P, c) / 6), [c === R.rec ? '推荐' : '', c === R.fast ? '最快' : '', c === R.cheap ? '最省' : ''].filter(Boolean).join('/')].join(' | ') + ' |'));
+    if (sg && sg.length) { o.push('', '## 改一个条件'); sg.forEach((s) => o.push('- ' + s.text)); }
+    o.push('', '## 前提', '', '- 里程按同一条线上两站的公里差；票价表含上限（写「6 3」= 6 公里以内含 6 公里 3 元）。', '- 不处理换乘、最短路径、按月累计优惠、高峰票价；真实票价以当地公布为准。');
+    return o.join('\n') + '\n';
+  }
+
+  const DEFAULT = {
+    stations: '站名 公里 分钟\n东湖 0 0\n柳岸 1.8 3\n北门 3.5 6\n中山路 5.2 9\n文化宫 7 12\n人民广场 8.6 15\n江滨 10.3 18\n新港 12.1 21\n科技园 13.8 24\n软件园 15.4 27\n会展中心 16.9 30\n金融城 18.6 33',
+    origins: '站名 步行分钟\n柳岸 4\n北门 13',
+    dests: '站名 步行分钟\n金融城 5\n会展中心 11',
+    fares: '公里上限 票价\n6 3\n16 4\n26 5\n36 6',
+    extraKm: '10', extraYuan: '1', rate: '2', trips: '44', tv: '15',
+  };
+  const PRESETS = [
+    ['默认：上班 44 程/月，时间 15 元/小时', DEFAULT],
+    ['时间不算钱（0 元/小时）', Object.assign({}, DEFAULT, { tv: '0' })],
+    ['时间值 30 元/小时', Object.assign({}, DEFAULT, { tv: '30' })],
+    ['站表没写分钟，按每公里 2 分钟估', Object.assign({}, DEFAULT, { stations: DEFAULT.stations.split('\n').map((l, i) => (i === 0 ? '站名 公里' : l.split(' ').slice(0, 2).join(' '))).join('\n') })],
+    ['票价表只到 16 公里（没写超出规则）', Object.assign({}, DEFAULT, { fares: '公里上限 票价\n6 3\n16 4', extraKm: '0', extraYuan: '0' })],
+  ];
+
+  const api = { DEFAULT, PRESETS, KEYS, parse, fare, ride, combos, pick, frontier, switches, ladder, calculate, suggestions, pickAt, bands, toCSV, toMD, cost6, f1, f2, yuan, mins, hm, nm, rateTxt, faster, cheaper };
+  if (typeof module === 'object' && module.exports) module.exports = api; else root.AppCore = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+  </script>
+  <script>
+/* 下一站就贵了 · 界面层 */
+(function () {
+  'use strict';
+  const C = window.AppCore;
+  const KEY = 'next-stop:v1';
+  const NAME = '下一站就贵了';
+  const copy = (o) => JSON.parse(JSON.stringify(o));
+  const DEFAULT = C.DEFAULT, PRESETS = C.PRESETS, KEYS = C.KEYS;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const BAND = ['#1f5f7a', '#2f6a3a', '#8a4b12', '#6a3d7a', '#4f6470', '#a3321f'];
+  let state = copy(DEFAULT);
+  let last = null;
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 隐私模式忽略 */ } }
+  function load() {
+    try {
+      const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+      const s = {};
+      for (const k of KEYS) { if (o[k] == null || typeof o[k] === 'object') return null; s[k] = String(o[k]).slice(0, 900); }
+      return s;
+    } catch (e) { return null; }
+  }
+  function fill() { KEYS.forEach((k) => { $(k).value = state[k]; }); }
+
+  /* 两站之间要不要画「跳档」：都在推荐上车站的同一侧，且离上车站更远的那站票价更高 */
+  function mapJumps(R) {
+    const o = R.rec.o, L = R.lad, out = {};
+    for (let i = 0; i + 1 < L.length; i++) {
+      const a = L[i], b = L[i + 1];
+      if (a.i === o || b.i === o || a.fare == null || b.fare == null) continue;
+      if (b.i > o && b.fare > a.fare) out[i] = { from: a.fare, to: b.fare };
+      if (a.i < o && a.fare > b.fare) out[i] = { from: b.fare, to: a.fare };
+    }
+    return out;
+  }
+  function renderMap(R) {
+    const P = R.P, o = R.rec.o, d = R.rec.d, J = mapJumps(R);
+    const ori = {}, des = {}; P.origins.forEach((x) => { ori[x.si] = x.walk; }); P.dests.forEach((x) => { des[x.si] = x.walk; });
+    let h = '<div class="rail"></div>';
+    P.st.forEach((s, i) => {
+      const L = R.lad[i], cls = i === o ? 'on' : i === d ? 'off' : '';
+      const tags = [];
+      if (ori[i] != null) tags.push('家走过来 ' + C.f1(ori[i]) + ' 分钟');
+      if (des[i] != null) tags.push('走到目的地 ' + C.f1(des[i]) + ' 分钟');
+      if (i === o) tags.unshift('推荐上车'); if (i === d) tags.unshift('推荐下车');
+      const fr = i === o ? '起点' : (L.fare == null ? '超出票价表' : C.yuan(L.fare));
+      h += '<div class="st ' + cls + '" data-i="' + i + '"><span class="km">' + C.f2(s.km) + ' km</span><span class="dot"></span><span class="nm">' + esc(s.name) + (tags.length ? '<small>' + esc(tags.join(' · ')) + '</small>' : '') + '</span><span class="fr">' + fr + '</span></div>';
+      if (J[i]) h += '<div class="jump">↕ 这里跳档：' + C.yuan(J[i].from) + ' → ' + C.yuan(J[i].to) + '</div>';
+    });
+    $('map').innerHTML = h;
+    $('mapTitle').textContent = '线路图：从「' + P.st[o].name + '」上车，坐到每一站多少钱';
+    $('legend').innerHTML = '<span><i style="background:#1f5f7a"></i>推荐上车</span><span><i style="background:#c0392b"></i>推荐下车</span><span style="color:#a3321f;font-weight:600">红虚线 = 票价在这两站之间跳一档</span>';
+  }
+  function renderTickets(R) {
+    const P = R.P;
+    $('tickets').innerHTML = R.list.slice().sort(C.faster).map((c) => {
+      const b = [c === R.rec ? '<span class="badge">推荐</span>' : '', c === R.fast ? '<span class="badge f">最快</span>' : '', c === R.cheap ? '<span class="badge c">最省</span>' : ''].join('');
+      return '<div class="tk' + (c === R.rec ? ' rec' : '') + '" data-k="' + c.k + '"><div>' + b + '</div><h3>' + esc(C.nm(P, c)) + '</h3><div class="big">' + C.yuan(c.fare) + ' · ' + C.mins(c.time) + '</div>' +
+        '<div class="ln"><span>走去上车</span><span>' + C.mins(c.walkO) + '</span></div><div class="ln"><span>坐车 ' + C.f2(c.dist) + ' 公里</span><span>' + C.mins(c.ride) + '</span></div><div class="ln"><span>走到目的地</span><span>' + C.mins(c.walkD) + '</span></div>' +
+        '<div class="ln"><span>按 ' + P.tv + ' 元/小时折算</span><span>' + C.yuan(C.cost6(P, c) / 6 * 1) + '</span></div><div class="ln"><span>一个月 ' + P.trips + ' 程票价</span><span>' + C.yuan(c.fare * P.trips) + '</span></div></div>';
+    }).join('');
+  }
+  function renderBands(R) {
+    const B = R.bands, P = R.P, ks = [...new Set(B.list.map((b) => b.c.k))];
+    const col = (c) => BAND[ks.indexOf(c.k) % BAND.length];
+    $('bandbar').innerHTML = B.list.map((b) => '<div style="flex:' + (b.to - b.from) + ';background:' + col(b.c) + '" title="' + esc(C.nm(P, b.c)) + '">' + esc(C.nm(P, b.c)) + '</div>').join('');
+    const pts = [0].concat(B.list.slice(1).map((b) => b.from));
+    const pct = (v) => Math.min(100, Math.max(0, v / B.hi * 100));
+    $('bandaxis').innerHTML = pts.map((v) => '<span style="left:' + Math.max(4, Math.min(92, pct(v))) + '%">' + C.rateTxt(v).replace(' 元/小时', '') + '</span>').join('') +
+      '<span class="now" style="left:' + Math.max(6, Math.min(90, pct(P.tv))) + '%">▲ 你：' + P.tv + '</span>';
+    $('bandList').innerHTML = B.list.map((b, i) => '<li><b style="color:' + col(b.c) + '">' + esc(C.nm(P, b.c)) + '</b>：时间价 ' + C.rateTxt(b.from).replace(' 元/小时', '') + (i === B.list.length - 1 ? ' 元/小时及以上' : ' 到 ' + C.rateTxt(b.to)) + '（每程 ' + C.yuan(b.c.fare) + '、' + C.mins(b.c.time) + '）</li>').join('');
+  }
+  function sugList(sg) {
+    const box = $('sugs'); box.innerHTML = '';
+    sg.forEach((x) => {
+      const d = document.createElement('div'); d.className = 'sug';
+      d.innerHTML = '<span>' + esc(x.text) + '</span>';
+      const bt = document.createElement('button'); bt.textContent = '照这样算'; bt.dataset.sug = x.id;
+      bt.addEventListener('click', () => { state = copy(x.apply); fill(); run(); });
+      d.appendChild(bt); box.appendChild(d);
+    });
+    $('sugCard').style.display = sg.length ? '' : 'none';
+  }
+  function run() {
+    [].forEach.call(document.querySelectorAll('.bad'), (e) => e.classList.remove('bad'));
+    try {
+      const R = C.calculate(state);
+      const sg = C.suggestions(state, R);
+      $('error').style.display = 'none'; $('out').style.display = ''; $('out2').style.display = '';
+      $('summary').textContent = R.summary;
+      $('facts').innerHTML = R.facts.map((f) => '<li>' + esc(f) + '</li>').join('');
+      $('rate').disabled = R.P.hasMin;
+      last = { r: R, sg };
+      renderMap(R); renderTickets(R); renderBands(R); sugList(sg);
+    } catch (e) {
+      last = null;
+      if (e.field) { const el = $(e.field); if (el) el.classList.add('bad'); }
+      $('error').textContent = '算不了：' + e.message; $('error').style.display = 'block';
+      $('out').style.display = 'none'; $('out2').style.display = 'none';
+    }
+    save();
+  }
+
+  /* ── 导出 ── */
+  function stamp() { const d = new Date(), z = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
+  function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+  function wrap(g, t, w) {
+    const NOHEAD = '，。、；：！？）」』%·→｜';
+    const out = []; let line = [];
+    const toks = String(t).match(/[0-9][0-9,.%]*(\s?(元|分钟|公里|程|小时))?|[A-Za-z_][A-Za-z0-9_.\-/]*|[\s\S]/g) || [];
+    const width = (a) => g.measureText(a.join('')).width;
+    for (const tk of toks) {
+      if (line.length && width(line.concat([tk])) > w) {
+        let carry = [tk];
+        while (line.length > 1 && (NOHEAD.indexOf(carry[0][0]) >= 0 || '（「『'.indexOf(line[line.length - 1]) >= 0)) carry.unshift(line.pop());
+        out.push(line.join(''));
+        line = carry; if (/^\s+$/.test(line[0])) line.shift();
+      } else line.push(tk);
+    }
+    if (line.length) out.push(line.join('')); return out;
+  }
+  function fitText(g, t, w) { let s = String(t); if (g.measureText(s).width <= w) return s; while (s.length > 1 && g.measureText(s + '…').width > w) s = s.slice(0, -1); return s + '…'; }
+  function drawPNG(Lx) {
+    const R = Lx.r, P = R.P;
+    const Wd = 1080, H = 1350, X = 70, TW = 940;
+    const cv = document.createElement('canvas'); cv.width = Wd; cv.height = H;
+    const g = cv.getContext('2d'), FF = '"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#eef1f3'; g.fillRect(0, 0, Wd, H);
+    g.fillStyle = '#ffffff'; g.fillRect(36, 36, Wd - 72, H - 72);
+    g.fillStyle = '#66727b'; g.font = '24px ' + FF;
+    g.fillText(fitText(g, NAME + ' · 时间 ' + P.tv + ' 元/小时 · 每月 ' + P.trips + ' 程', TW), X, 98);
+    g.fillStyle = '#1f262b'; g.font = 'bold 32px ' + FF;
+    let y = 152;
+    wrap(g, R.summary, TW).slice(0, 4).forEach((l) => { g.fillText(l, X, y); y += 44; });
+    y += 14;
+    /* 左：线路（只画上车最近端到下车最远端那一段，最多 14 站） */
+    const ids = P.origins.map((x) => x.si).concat(P.dests.map((x) => x.si));
+    let lo = Math.min(...ids), hi = Math.max(...ids);
+    const all = []; for (let i = lo; i <= hi; i++) all.push(i);
+    const show = all.length <= 14 ? all : all.filter((i, j) => j < 5 || j >= all.length - 8 || ids.includes(i)).slice(0, 14);
+    const gaps = show.filter((i, j) => j && show[j - 1] !== i - 1).length, slots = show.length + gaps;
+    const mapTop = y, step = Math.min(44, Math.floor(520 / Math.max(1, slots)));
+    const ys = []; { let k = 0; show.forEach((i, j) => { if (j && show[j - 1] !== i - 1) k++; ys.push(mapTop + k * step + step / 2); k++; }); }
+    const J = mapJumps(R), rx = X + 110;
+    g.fillStyle = '#d4dbe0'; g.fillRect(rx - 3, mapTop + step / 2, 6, (slots - 1) * step);
+    show.forEach((i, j) => {
+      const cy = ys[j], s = P.st[i], L = R.lad[i];
+      if (j && show[j - 1] !== i - 1) { g.fillStyle = '#fff'; g.fillRect(rx - 4, cy - step - 10, 8, 20); g.fillStyle = '#77838b'; g.font = '17px ' + FF; g.fillText('…… 中间省略 ' + (i - show[j - 1] - 1) + ' 站', rx + 22, cy - step + 6); }
+      g.fillStyle = '#77838b'; g.font = '17px ' + FF; g.textAlign = 'right'; g.fillText(C.f2(s.km) + ' km', rx - 18, cy + 6); g.textAlign = 'left';
+      g.beginPath(); g.arc(rx, cy, 9, 0, 7); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 4;
+      g.strokeStyle = i === R.rec.o ? '#1f5f7a' : i === R.rec.d ? '#c0392b' : '#9aa6ae'; g.stroke();
+      g.fillStyle = '#1f262b'; g.font = (i === R.rec.o || i === R.rec.d ? 'bold ' : '') + '21px ' + FF;
+      g.fillText(fitText(g, s.name + (i === R.rec.o ? '（上车）' : i === R.rec.d ? '（下车）' : ''), 230), rx + 22, cy + 7);
+      g.textAlign = 'right'; g.fillStyle = '#1f262b'; g.font = 'bold 20px ' + FF;
+      g.fillText(i === R.rec.o ? '起点' : L.fare == null ? '超出' : C.yuan(L.fare), X + 470, cy + 7); g.textAlign = 'left';
+      if (J[i] && show[j + 1] === i + 1) { g.strokeStyle = '#d97a68'; g.setLineDash([6, 5]); g.lineWidth = 2; g.beginPath(); g.moveTo(rx + 16, cy + step / 2); g.lineTo(X + 470, cy + step / 2); g.stroke(); g.setLineDash([]); }
+    });
+    /* 右：小票 */
+    const tx = X + 510, tw = TW - 510;
+    let ty = mapTop;
+    const ts = R.list.slice().sort(C.faster).slice(0, 5), th = Math.min(118, Math.floor((slots * step - 10 * (ts.length - 1)) / ts.length));
+    ts.forEach((c) => {
+      g.fillStyle = c === R.rec ? '#f1f7fa' : '#f7f9fa'; g.fillRect(tx, ty, tw, th);
+      g.lineWidth = c === R.rec ? 3 : 1; g.strokeStyle = c === R.rec ? '#1f5f7a' : '#b9c3ca'; g.strokeRect(tx, ty, tw, th);
+      const bd = [c === R.rec ? '推荐' : '', c === R.fast ? '最快' : '', c === R.cheap ? '最省' : ''].filter(Boolean).join(' · ');
+      g.fillStyle = '#1f5f7a'; g.font = '16px ' + FF; g.fillText(bd, tx + 14, ty + 24);
+      g.fillStyle = '#1f262b'; g.font = 'bold 20px ' + FF; g.fillText(fitText(g, C.nm(P, c), tw - 28), tx + 14, ty + 50);
+      g.font = 'bold 26px ' + FF; g.fillText(fitText(g, C.yuan(c.fare) + ' · ' + C.mins(c.time), tw - 28), tx + 14, ty + Math.min(86, th - 12));
+      ty += th + 10;
+    });
+    y = Math.max(mapTop + slots * step, ty) + 46;
+    g.font = '21px ' + FF; g.fillStyle = '#1f262b';
+    const items = R.facts.filter((f) => !/^比了 /.test(f)).concat(Lx.sg.map((q) => '改一个条件：' + q.text));
+    for (const f of items) {
+      const ls = wrap(g, '· ' + f, TW);
+      if (y + (ls.length - 1) * 30 > H - 130) break;
+      ls.forEach((l) => { g.fillText(l, X, y); y += 30; }); y += 6;
+    }
+    g.fillStyle = '#77838b'; g.font = '18px ' + FF;
+    wrap(g, '里程按同一条线上的公里差，票价表是自己抄的；不含换乘、按月累计优惠与高峰票价。默认例子是虚构的。', TW).forEach((l, i) => g.fillText(l, X, H - 96 + i * 27));
+    return Promise.resolve(cv);
+  }
+  function backup() {
+    const R = last.r, P = R.P, one = (c) => ({ from: P.st[c.o].name, to: P.st[c.d].name, km: +C.f2(c.dist), fareYuan: +C.f2(c.fare), minutes: +C.f1(c.time) });
+    return { app: NAME, version: 1, savedAt: stamp(), input: copy(state), result: { summary: R.summary, timeValuePerHour: P.tv, tripsPerMonth: P.trips,
+      recommended: one(R.rec), fastest: one(R.fast), cheapest: one(R.cheap), combos: R.list.map(one),
+      bands: R.bands.list.map((b) => ({ fromPerHour: +b.from.toFixed(2), toPerHour: +b.to.toFixed(2), pick: P.st[b.c.o].name + '→' + P.st[b.c.d].name })) } };
+  }
+  function init() {
+    KEYS.forEach((k) => $(k).addEventListener('input', () => { state[k] = $(k).value; run(); }));
+    PRESETS.forEach((p) => {
+      const b = document.createElement('button'); b.className = 'ghost'; b.textContent = p[0];
+      b.addEventListener('click', () => { state = copy(p[1]); fill(); run(); });
+      $('presets').appendChild(b);
+    });
+    $('reset').addEventListener('click', () => { state = copy(DEFAULT); fill(); run(); });
+    $('dlCSV').addEventListener('click', () => { if (last) download(NAME + '.csv', new Blob(['\ufeff' + C.toCSV(last.r, stamp())], { type: 'text/csv;charset=utf-8' })); });
+    $('dlMD').addEventListener('click', () => { if (last) download(NAME + '.md', new Blob([C.toMD(last.r, stamp(), last.sg)], { type: 'text/markdown;charset=utf-8' })); });
+    $('dlJSON').addEventListener('click', () => { if (last) download(NAME + '-备份.json', new Blob([JSON.stringify(backup(), null, 2)], { type: 'application/json' })); });
+    $('dlPNG').addEventListener('click', () => { if (last) drawPNG(last).then((cv) => cv.toBlob((b) => download(NAME + '-1080x1350.png', b), 'image/png')); });
+    state = load() || copy(DEFAULT);
+    fill(); run();
+    window.__ex = { last: () => last, state: () => state, presets: PRESETS, DEFAULT, drawPNG };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+
+  </script>
+</body>
+</html>
